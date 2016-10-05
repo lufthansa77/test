@@ -1,0 +1,8 @@
+
+/usr/local/rrdtool/bin/rrdtool create bgp-updates.rrd --step 60 \
+       DS:ipv4:GAUGE:120:0:250000 \
+       DS:vpnv4:GAUGE:120:0:250000 \
+       RRA:AVERAGE:0.5:1:12400 \
+      RRA:MIN:0.5:12:12400 \
+      RRA:MAX:0.5:12:12400 \
+      RRA:AVERAGE:0.5:12:22400 

@@ -26,7 +26,7 @@ my $rabbit_user   = 'guest';
 my $rabbit_passwd = 'guest';
 
 # RRD
-my $ipv4_rrd_filename = 'ipv4-bgp-updates.rrd';
+my $rrd_filename = '/var/www/html/pmprefix/bgp-updates.rrd';
 
 my $isServiceOn = 0;
 my $logger      = undef;
@@ -47,9 +47,9 @@ sub signal_hup { #  {{{
 use Proc::Daemon;
 my $daemon = Proc::Daemon->new(
     work_dir     => $work_dir,
-    child_STDOUT => "$work_dir/$daemon_name.stdout",
-    child_STDERR => '+>>debug.txt',
-    pid_file     => $pid_file,
+    #child_STDOUT => "$work_dir/$daemon_name.stdout",
+    #child_STDERR => "+>>$work_dir/$daemon_name.stderr",
+    #pid_file     => $pid_file,
 );
 
 my $option = new Getopt::Long::Parser;
@@ -91,11 +91,9 @@ $mq->channel_open($channel);
 
 my $queuename = $mq->queue_declare( $channel, "" );
 $mq->queue_bind( $channel, $queuename, $exchange, $routing_key );
-#$mq->consume( $channel, $queuename );
-
 $mq->consume( $channel, $queuename, {} );
 
-my $ipv4_rrd = RRD::Simple->new( file => $ipv4_rrd_filename );
+my $ipv4_rrd = RRD::Simple->new( file => $rrd_filename );
 
 my $next_1min_sec = time() + 1 * 60;
 my $ipv4_counter  = 0;
@@ -117,7 +115,8 @@ while ( my $message = $mq->recv(0) and $isServiceOn ) {
         $next_1min_sec += 1 * 60;
 
        eval {
-        $ipv4_rrd->update( ipv4  => $ipv4_counter,
+        $ipv4_rrd->update( $rrd_filename, $t,
+                           ipv4  => $ipv4_counter,
                            vpnv4 => $vpnv4_counter );
        };
        if ( $@ ) { $logger->error($@); };
@@ -129,7 +128,7 @@ while ( my $message = $mq->recv(0) and $isServiceOn ) {
 }
 
 
-$logger->info("Task Message: Service is shutting down ");
+$logger->info("$daemon_name is shutted down");
 $mq->disconnect();
 
 exit 0;

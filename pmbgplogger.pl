@@ -11,10 +11,11 @@ use Net::AMQP::RabbitMQ;
 use IO::File;
 
 # Daemon config
+my $daemon_name = "pmbgplogger";
 my $work_dir = "/root/devel/rabbitmq/";
-my $pid_file = "$work_dir/pid.txt";
+my $pid_file = "$work_dir/$daemon_name.pid";
 my $bgp_updates_log = "$work_dir/bgpupdates.log";
-my $daemon_log = "$work_dir/dumplog.log";
+my $daemon_log = "$work_dir/$daemon_name.log";
 
 # RabbitMQ config
 my $channel       = 1;
@@ -24,7 +25,6 @@ my $rabbit_server = 'localhost';
 my $rabbit_user   = 'guest';
 my $rabbit_passwd = 'guest';
 
-my $daemon_name = "pmbgplogger";
 my $isServiceOn = 0;
 my $logger      = undef;
 my $fh          = undef;           # Filehandle for datafile
@@ -47,9 +47,9 @@ sub signal_hup {    # Clean up Handles and connections here {{{
 use Proc::Daemon;
 my $daemon = Proc::Daemon->new(
     work_dir     => $work_dir,
-    child_STDOUT => "$work_dir/output.file",
-    child_STDERR => '+>>debug.txt',
-    pid_file     => $pid_file,
+    #child_STDOUT => "$work_dir/$daemon_name.stdout", 
+    #child_STDERR => "+>>$work_dir/$daemon_name.stderr",
+    #pid_file     => $pid_file,
 );
 
 my $option = new Getopt::Long::Parser;
@@ -89,13 +89,8 @@ my $mq = Net::AMQP::RabbitMQ->new();
 $mq->connect( $rabbit_server, { user => $rabbit_user, password => $rabbit_passwd } );
 $mq->channel_open($channel);
 
-# Declare queue, letting the server auto-generate one and collect the name
 my $queuename = $mq->queue_declare( $channel, "" );
-
-# Bind the new queue to the exchange using the routing key
 $mq->queue_bind( $channel, $queuename, $exchange, $routing_key );
-
-# Request that messages be sent and receive them until interrupted
 $mq->consume( $channel, $queuename );
 
 $fh = open_data_log();
@@ -111,7 +106,7 @@ while ( my $message = $mq->recv(0) and $isServiceOn ) {
 
 
 
-$logger->info("Task Message: Service is shutting down ");
+$logger->info("$daemon_name is shutted down");
 $mq->disconnect();
 close $fh;
 
